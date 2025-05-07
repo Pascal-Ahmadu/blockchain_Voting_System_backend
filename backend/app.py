@@ -410,12 +410,13 @@ def check_contract():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/health')
-def health_check():
+@app.route('/')
+def root():
     return jsonify({
         "status": "ready",
-        "db_connected": contract is not None,
-        "voting_status": contract.functions.votingOpen().call() if contract else False
+        "service": "Blockchain Voting API"
     }), 200
 if __name__ == '__main__':
     print("Starting Flask app with in-memory session store...")
-    app.run(debug=True, host='0.0.0.0')
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
