@@ -409,6 +409,13 @@ def check_contract():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/health')
+def health_check():
+    return jsonify({
+        "status": "ready",
+        "db_connected": contract is not None,
+        "voting_status": contract.functions.votingOpen().call() if contract else False
+    }), 200
 if __name__ == '__main__':
     print("Starting Flask app with in-memory session store...")
     app.run(debug=True, host='0.0.0.0')

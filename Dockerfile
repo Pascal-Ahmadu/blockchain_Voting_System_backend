@@ -2,7 +2,7 @@ FROM python:3.11-slim as builder
 
 WORKDIR /app
 COPY backend/requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache pip install --user --no-cache-dir -r requirements.txt
 
 FROM python:3.11-slim
 WORKDIR /app
