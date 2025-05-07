@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: voting-backend
+    runtime: docker
+    region: frankfurt
+    env: python
+    build:
+      dockerfile: Dockerfile
+      build_pack_version: 2
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: FLASK_DEBUG
+        value: 0
+    healthCheckPath: /api/health
+    autoDeploy: true
+    scaling:
+      replicas: 1
+      concurrency: 100
