@@ -1,5 +1,6 @@
-Flask==3.0.3
-Flask-CORS==4.0.0
-web3==6.15.0
+flask
+flask-cors
+web3
+python-dotenv
 gunicorn==21.2.0
 python-dotenv==1.0.1

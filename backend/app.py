@@ -17,18 +17,19 @@ session_store = {}
 # CORS configuration
 # Replace the existing CORS setup with this more permissive one
 CORS(app,
-     origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+     origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://blockchain-voting-frontend.vercel.app"],
      supports_credentials=True,
      allow_headers=["Content-Type", "Authorization"],
      methods=["GET", "POST", "OPTIONS"],
      expose_headers=["Content-Type"],
      max_age=600)
-# Connect to Ganache
-ganache_url = "http://127.0.0.1:8545"
-web3 = Web3(Web3.HTTPProvider(ganache_url))
+# Replace Ganache connection with Infura
+infura_project_id = "XHNgxSMrked7hOlYetrLGy+eDCGTMLr6kTjBuL95UqPBjQWQBphShA"
+infura_url = f"https://sepolia.infura.io/v3/{infura_project_id}"
+web3 = Web3(Web3.HTTPProvider(infura_url))
 
 # Load smart contract
-contract_address = Web3.to_checksum_address("0x722E04FA8774100cF5416a9fE02b2e5D2132710c")
+contract_address = Web3.to_checksum_address("0x722E04FA8774100cF5416a9fE02b2e5D2132710c")  # Replace with your deployed contract address
 
 try:
     # Try different paths to find the contract file
