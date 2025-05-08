@@ -212,7 +212,7 @@ def add_candidate():
         })
         
         signed_tx = web3.eth.account.sign_transaction(tx, private_key=private_key)
-        tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction.hex())
         receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
 
         # Get the ID of the newly added candidate (last entry)
