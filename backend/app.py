@@ -36,9 +36,9 @@ contract_address = Web3.to_checksum_address("0x8912ED01D24cba70A535598Af18C38C48
 try:
     # Try different paths to find the contract file
     paths = [
-        '../build/contracts/Voting.json',
-        './build/contracts/Voting.json',
-        'build/contracts/Voting.json'
+        '../artifacts/contracts/Voting.sol/Voting.json',
+        './artifacts/contracts/Voting.sol/Voting.json',
+        'artifacts/contracts/Voting.sol/Voting.json'
     ]
     
     for path in paths:
