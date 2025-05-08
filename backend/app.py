@@ -6,8 +6,6 @@ from flask_cors import CORS
 from web3 import Web3
 from eth_account.messages import encode_defunct
 import os
-from flask_cors import CORS
-from web3 import Web3
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -17,7 +15,6 @@ app = Flask(__name__)
 session_store = {}
 
 # CORS configuration
-# Replace the existing CORS setup with this more permissive one
 CORS(app,
      origins=["http://localhost:5173", "http://127.0.0.1:5173", "https://blockchain-voting-frontend.vercel.app"],
      supports_credentials=True,
@@ -25,6 +22,7 @@ CORS(app,
      methods=["GET", "POST", "OPTIONS"],
      expose_headers=["Content-Type"],
      max_age=600)
+
 # Replace Ganache connection with Infura
 infura_project_id = os.environ.get('INFURA_PROJECT_ID')
 infura_url = f"https://sepolia.infura.io/v3/{infura_project_id}"
@@ -33,34 +31,84 @@ web3 = Web3(Web3.HTTPProvider(infura_url))
 # Load smart contract
 contract_address = Web3.to_checksum_address("0x8912ED01D24cba70A535598Af18C38C48e44c585")  # Replace with your deployed contract address
 
-try:
-    # Try different paths to find the contract file
-    paths = [
-        '../artifacts/contracts/Voting.sol/Voting.json',
-        './artifacts/contracts/Voting.sol/Voting.json',
-        'artifacts/contracts/Voting.sol/Voting.json'
-    ]
-    
-    for path in paths:
-        if os.path.exists(path):
-            with open(path) as f:
-                voting_artifact = json.load(f)
-                contract = web3.eth.contract(address=contract_address, abi=voting_artifact['abi'])
-                print(f"Contract loaded successfully from {path}")
-                break
-    else:
-        print("Warning: Contract file not found. Some functionality may be limited.")
-        contract = None
-except Exception as e:
-    print(f"Error loading contract: {e}")
-    contract = None
+# Define contract ABI directly - no need to load from file
+contract_abi = [
+    {
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "inputs": [{"internalType": "string","name": "_name","type": "string"}],
+        "name": "addCandidate",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+        "name": "candidates",
+        "outputs": [
+            {"internalType": "uint256","name": "id","type": "uint256"},
+            {"internalType": "string","name": "name","type": "string"},
+            {"internalType": "uint256","name": "voteCount","type": "uint256"}
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "candidatesCount",
+        "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "startVoting",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "endVoting",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "votingEnded",
+        "outputs": [{"internalType": "bool","name": "","type": "bool"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "uint256","name": "_candidateId","type": "uint256"}],
+        "name": "vote",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "address","name": "_voter","type": "address"}],
+        "name": "registerVoter",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+]
+
+# Initialize contract with ABI
+contract = web3.eth.contract(address=contract_address, abi=contract_abi)
 
 # Debug middleware
 @app.before_request
 def before_request():
     print(f"→ {request.method} {request.path}")
     print(f"→ Headers: {dict(request.headers)}")
-    print(f"→ Session store: {session_store}")  # Add this line
+    print(f"→ Session store: {session_store}")
 
 @app.after_request
 def after_request(response):
@@ -74,6 +122,38 @@ def clean_expired_sessions():
     expired_keys = [k for k, v in session_store.items() if v.get("expires_at", 0) < current_time]
     for key in expired_keys:
         del session_store[key]
+
+# Helper function for sending transactions
+def send_contract_transaction(function_call, private_key):
+    try:
+        account = web3.eth.account.from_key(private_key)
+        nonce = web3.eth.get_transaction_count(account.address)
+        
+        tx = function_call.build_transaction({
+            'chainId': 11155111,
+            'gas': 300000,
+            'gasPrice': web3.to_wei('10', 'gwei'),
+            'nonce': nonce
+        })
+        
+        # Sign and send transaction
+        signed_tx = web3.eth.account.sign_transaction(tx, private_key)
+        tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        
+        # Wait for receipt
+        receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
+        
+        return {
+            "success": True,
+            "tx_hash": tx_hash.hex(),
+            "receipt": receipt
+        }
+    except Exception as e:
+        print(f"Transaction error: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 # ================================================
 # 🔹 AUTHENTICATION ENDPOINTS
@@ -200,21 +280,16 @@ def add_candidate():
         data = request.get_json()
         candidate_name = data['name']
         private_key = os.getenv('PRIVATE_KEY')
-        account = web3.eth.account.from_key(private_key).address
         
-        nonce = web3.eth.get_transaction_count(account)
+        # Use the helper function to send the transaction
+        result = send_contract_transaction(
+            contract.functions.addCandidate(candidate_name),
+            private_key
+        )
         
-        tx = contract.functions.addCandidate(candidate_name).build_transaction({
-            'chainId': 11155111,
-            'gas': 300000,
-            'gasPrice': web3.to_wei('10', 'gwei'),
-            'nonce': nonce
-        })
+        if not result["success"]:
+            return jsonify({"error": f"Failed to add candidate: {result['error']}"}), 500
         
-        signed_tx = web3.eth.account.sign_transaction(tx, private_key=private_key)
-        tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction.hex())
-        receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
-
         # Get the ID of the newly added candidate (last entry)
         candidate_count = contract.functions.candidatesCount().call()
         new_candidate = contract.functions.candidates(candidate_count).call()
@@ -222,31 +297,49 @@ def add_candidate():
         return jsonify({
             "id": new_candidate[0],
             "name": new_candidate[1],
-            "voteCount": new_candidate[2]
+            "voteCount": new_candidate[2],
+            "txHash": result["tx_hash"]
         }), 200
 
     except Exception as e:
+        print(f"Add candidate error details: {str(e)}")
         return jsonify({"error": f"Failed to add candidate: {str(e)}"}), 500
 
 @app.route('/admin/start_voting', methods=['POST'])
 def start_voting():
     try:
-        admin_account = Web3.to_checksum_address(web3.eth.accounts[0])
-        tx_hash = contract.functions.startVoting().transact({'from': admin_account})
-        web3.eth.wait_for_transaction_receipt(tx_hash)
-        return jsonify({"message": "Voting has started!"})
+        private_key = os.getenv('PRIVATE_KEY')
+        
+        # Use the helper function to send the transaction
+        result = send_contract_transaction(
+            contract.functions.startVoting(),
+            private_key
+        )
+        
+        if not result["success"]:
+            return jsonify({"error": f"Failed to start voting: {result['error']}"}), 500
+        
+        return jsonify({"message": "Voting has started!", "txHash": result["tx_hash"]})
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": f"Failed to start voting: {str(e)}"}), 500
 
 @app.route('/admin/end_voting', methods=['POST'])
 def end_voting():
     try:
-        admin_account = Web3.to_checksum_address(web3.eth.accounts[0])
-        tx_hash = contract.functions.endVoting().transact({'from': admin_account})
-        web3.eth.wait_for_transaction_receipt(tx_hash)
-        return jsonify({"message": "Voting has ended!"})
+        private_key = os.getenv('PRIVATE_KEY')
+        
+        # Use the helper function to send the transaction
+        result = send_contract_transaction(
+            contract.functions.endVoting(),
+            private_key
+        )
+        
+        if not result["success"]:
+            return jsonify({"error": f"Failed to end voting: {result['error']}"}), 500
+        
+        return jsonify({"message": "Voting has ended!", "txHash": result["tx_hash"]})
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": f"Failed to end voting: {str(e)}"}), 500
 
 # ================================================
 # 🔹 VOTING ENDPOINTS
@@ -298,20 +391,26 @@ def cast_vote():
         return jsonify({"error": "Authentication required"}), 401
 
     voter_address = session_store[session_token]["wallet_address"]
+    private_key = os.getenv('PRIVATE_KEY')  # Using admin account for transaction submission
 
     try:
         # Ensure the voter's address is in checksum format
         voter_address = Web3.to_checksum_address(voter_address)
+        
+        # Use the helper function to send the transaction
+        result = send_contract_transaction(
+            contract.functions.vote(candidate_id),
+            private_key
+        )
+        
+        if not result["success"]:
+            return jsonify({"error": f"Failed to cast vote: {result['error']}"}), 500
 
-        tx_hash = contract.functions.vote(candidate_id).transact({'from': voter_address})
-        web3.eth.wait_for_transaction_receipt(tx_hash)
-
-        return jsonify({"message": "Vote cast successfully!", "txHash": tx_hash.hex()})
+        return jsonify({"message": "Vote cast successfully!", "txHash": result["tx_hash"]})
     except ValueError as e:
         return jsonify({"error": f"Invalid wallet address: {str(e)}"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
+        return jsonify({"error": f"Failed to cast vote: {str(e)}"}), 500
 
 @app.route('/results', methods=['GET', 'OPTIONS'])
 def get_results():
@@ -354,31 +453,40 @@ def register_voter():
     try:
         # Convert voter address to checksum format
         voter_address = Web3.to_checksum_address(voter_address)
-
-        # Admin registers the voter
-        admin_account = Web3.to_checksum_address(web3.eth.accounts[0])
         
-        tx_hash = contract.functions.registerVoter(voter_address).transact({'from': admin_account})
-        web3.eth.wait_for_transaction_receipt(tx_hash)
+        # Use the helper function to send the transaction
+        private_key = os.getenv('PRIVATE_KEY')
+        result = send_contract_transaction(
+            contract.functions.registerVoter(voter_address),
+            private_key
+        )
         
-        return jsonify({"message": f"Voter {voter_address} registered successfully!"})
+        if not result["success"]:
+            return jsonify({"error": f"Failed to register voter: {result['error']}"}), 500
+        
+        return jsonify({
+            "message": f"Voter {voter_address} registered successfully!",
+            "txHash": result["tx_hash"]
+        })
     except ValueError as e:
         return jsonify({"error": f"Invalid wallet address: {str(e)}"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": f"Failed to register voter: {str(e)}"}), 500
 
-    
-# Add this to your Flask app
+# ================================================
+# 🔹 DIAGNOSTIC ENDPOINTS
+# ================================================
 @app.route('/api/check-connection', methods=['GET'])
 def check_connection():
     try:
         connected = web3.is_connected()
         chain_id = web3.eth.chain_id
-        accounts = [Web3.to_checksum_address(account) for account in web3.eth.accounts]
+        
+        # Can't get accounts from Infura, so just return connection status
         return jsonify({
             "connected": connected,
             "chainId": chain_id,
-            "accounts": accounts
+            "provider": infura_url.split('/v3/')[0]
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -400,68 +508,25 @@ def check_contract():
 @app.route('/api/health')
 @app.route('/')
 def root():
+    import pkg_resources
+    try:
+        web3_version = pkg_resources.get_distribution("web3").version
+    except pkg_resources.DistributionNotFound:
+        web3_version = "unknown"
+        
     return jsonify({
         "status": "ready",
-        "service": "Blockchain Voting API"
+        "service": "Blockchain Voting API",
+        "web3_version": web3_version
     }), 200
-# Replace the file loading logic with direct ABI definition
-contract_abi = [
-    {
-        "inputs": [],
-        "stateMutability": "nonpayable",
-        "type": "constructor"
-    },
-    {
-        "inputs": [{"internalType": "string","name": "_name","type": "string"}],
-        "name": "addCandidate",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [{"internalType": "uint256","name": "","type": "uint256"}],
-        "name": "candidates",
-        "outputs": [
-            {"internalType": "uint256","name": "id","type": "uint256"},
-            {"internalType": "string","name": "name","type": "string"},
-            {"internalType": "uint256","name": "voteCount","type": "uint256"}
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "startVoting",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "endVoting",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [{"internalType": "uint256","name": "_candidateId","type": "uint256"}],
-        "name": "vote",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [{"internalType": "address","name": "_voter","type": "address"}],
-        "name": "registerVoter",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    }
-]
 
-# Initialize contract with ABI
-contract = web3.eth.contract(address=contract_address, abi=contract_abi)
 if __name__ == '__main__':
-    print("Starting Flask app with in-memory session store...")
+    import pkg_resources
+    try:
+        web3_version = pkg_resources.get_distribution("web3").version
+        print(f"Using Web3.py version: {web3_version}")
+    except pkg_resources.DistributionNotFound:
+        print("Web3.py version could not be determined")
+        
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)

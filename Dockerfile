@@ -8,8 +8,10 @@ RUN --mount=type=cache,target=/root/.cache pip install --user --no-cache-dir -r 
 FROM python:3.11-slim
 WORKDIR /app
 COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
 COPY . .
-ENV PORT=10000
+ENV PATH=/root/.local/bin:$PATH
+ENV PYTHONPATH=/app
+ENV PORT=5000
+RUN pip install gunicorn
 EXPOSE 5000
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "120", "--workers", "2", "backend.app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "--timeout", "120", "--workers", "4", "--preload", "backend.app:app"]

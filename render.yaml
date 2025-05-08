@@ -4,8 +4,11 @@ services:
     runtime: docker
     build:
       dockerfile: Dockerfile
-      build_pack_version: 2
-    autoDeploy: true
+    envVars:
+      - key: INFURA_PROJECT_ID
+        value: your_infura_project_id
+      - key: PRIVATE_KEY
+        value: your_private_key
     scaling:
       replicas: 1
       concurrency: 100
