@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://127.0.0.1:5000"; // Flask backend URL
+const API_BASE_URL = "https://blockchain-voting-system-backend.onrender.com"; // Flask backend URL
 
 // Create an axios instance
 const apiClient = axios.create({
