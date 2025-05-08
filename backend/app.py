@@ -60,6 +60,7 @@ except Exception as e:
 def before_request():
     print(f"→ {request.method} {request.path}")
     print(f"→ Headers: {dict(request.headers)}")
+    print(f"→ Session store: {session_store}")  # Add this line
 
 @app.after_request
 def after_request(response):
@@ -96,11 +97,12 @@ def get_nonce():
     nonce = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
     session_token = ''.join(random.choices(string.ascii_letters + string.digits, k=64))
 
+    # Increase session duration
     session_store[session_token] = {
         "wallet_address": wallet_address,
         "nonce": nonce,
         "created_at": time.time(),
-        "expires_at": time.time() + 600  # 10 minutes
+        "expires_at": time.time() + 3600  # Increase to 1 hour
     }
 
     clean_expired_sessions()
@@ -419,6 +421,63 @@ def root():
         "status": "ready",
         "service": "Blockchain Voting API"
     }), 200
+# Replace the file loading logic with direct ABI definition
+contract_abi = [
+    {
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "inputs": [{"internalType": "string","name": "_name","type": "string"}],
+        "name": "addCandidate",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+        "name": "candidates",
+        "outputs": [
+            {"internalType": "uint256","name": "id","type": "uint256"},
+            {"internalType": "string","name": "name","type": "string"},
+            {"internalType": "uint256","name": "voteCount","type": "uint256"}
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "startVoting",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "endVoting",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "uint256","name": "_candidateId","type": "uint256"}],
+        "name": "vote",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "address","name": "_voter","type": "address"}],
+        "name": "registerVoter",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+]
+
+# Initialize contract with ABI
+contract = web3.eth.contract(address=contract_address, abi=contract_abi)
 if __name__ == '__main__':
     print("Starting Flask app with in-memory session store...")
     port = int(os.environ.get('PORT', 5000))
