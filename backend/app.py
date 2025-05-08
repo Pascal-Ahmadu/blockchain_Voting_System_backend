@@ -199,9 +199,11 @@ def add_candidate():
     try:
         data = request.get_json()
         candidate_name = data['name']
+        private_key = os.getenv('PRIVATE_KEY')
+        account = web3.eth.account.from_key(private_key).address
         
-        # Get transaction count for nonce
-        nonce = web3.eth.get_transaction_count(os.getenv('PRIVATE_KEY'))
+        # Get transaction count using the derived address
+        nonce = web3.eth.get_transaction_count(account)
         
         # Build transaction
         tx = contract.functions.addCandidate(candidate_name).build_transaction({
@@ -212,7 +214,7 @@ def add_candidate():
         })
         
         # Sign and send transaction
-        signed_tx = web3.eth.account.sign_transaction(tx, private_key=os.getenv('PRIVATE_KEY'))
+        signed_tx = web3.eth.account.sign_transaction(tx, private_key=private_key)
         tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
         receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
 
