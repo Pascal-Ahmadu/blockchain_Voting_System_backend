@@ -8,6 +8,8 @@ from eth_account.messages import encode_defunct
 import os
 from flask_cors import CORS
 from web3 import Web3
+from dotenv import load_dotenv
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -24,7 +26,7 @@ CORS(app,
      expose_headers=["Content-Type"],
      max_age=600)
 # Replace Ganache connection with Infura
-infura_project_id = "XHNgxSMrked7hOlYetrLGy+eDCGTMLr6kTjBuL95UqPBjQWQBphShA"
+infura_project_id = os.environ.get('INFURA_PROJECT_ID')
 infura_url = f"https://sepolia.infura.io/v3/{infura_project_id}"
 web3 = Web3(Web3.HTTPProvider(infura_url))
 
