@@ -196,54 +196,38 @@ def check_auth():
 # ================================================
 @app.route('/admin/add_candidate', methods=['POST'])
 def add_candidate():
-    data = request.get_json()
-    candidate_name = data.get('name')
-
-    if not candidate_name:
-        return jsonify({"error": "Candidate name required"}), 400
-
-    if not contract:
-        return jsonify({"error": "Contract not loaded"}), 500
-
     try:
-        # Get the admin account
-        admin_account = web3.eth.accounts[0]
-        # Ensure admin account is in checksum format
-        admin_account = Web3.to_checksum_address(admin_account)
+        data = request.get_json()
+        candidate_name = data['name']
         
-        # Get the current nonce explicitly
-        current_nonce = web3.eth.get_transaction_count(admin_account)
-        print(f"Current nonce for {admin_account}: {current_nonce}")
+        # Get transaction count for nonce
+        nonce = web3.eth.get_transaction_count(os.getenv('PRIVATE_KEY'))
         
-        # Build transaction with explicit nonce
-        transaction = contract.functions.addCandidate(candidate_name).build_transaction({
-            'chainId': web3.eth.chain_id,
-            'gas': 2000000,
-            'gasPrice': web3.eth.gas_price,
-            'nonce': current_nonce,
-            'from': admin_account
+        # Build transaction
+        tx = contract.functions.addCandidate(candidate_name).build_transaction({
+            'chainId': 11155111,  # Sepolia chain ID
+            'gas': 300000,
+            'gasPrice': web3.to_wei('10', 'gwei'),
+            'nonce': nonce
         })
         
-        # Send raw transaction
-        tx_hash = web3.eth.send_transaction(transaction)
-        print(f"Transaction hash: {tx_hash.hex()}")
+        # Sign and send transaction
+        signed_tx = web3.eth.account.sign_transaction(tx, private_key=os.getenv('PRIVATE_KEY'))
+        tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
+
+        # Get updated candidate count
+        candidate_count = contract.functions.candidatesCount().call()
+        new_candidate = contract.functions.candidates(candidate_count).call()
         
-        # Wait for receipt
-        receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-        
-        return jsonify({"message": f"Candidate '{candidate_name}' added successfully!"})
+        return jsonify({
+            "id": new_candidate[0],
+            "name": new_candidate[1],
+            "voteCount": new_candidate[2]
+        }), 200
+
     except Exception as e:
-        error_message = str(e)
-        print(f"Detailed error: {error_message}")
-        
-        # Handle nonce errors specifically
-        if "nonce" in error_message:
-            return jsonify({
-                "error": "Transaction nonce error. Try restarting your application or Ganache.",
-                "details": error_message
-            }), 400
-        else:
-            return jsonify({"error": f"Failed to add candidate: {error_message}"}), 400
+        return jsonify({"error": f"Failed to add candidate: {str(e)}"}), 500
 
 @app.route('/admin/start_voting', methods=['POST'])
 def start_voting():
