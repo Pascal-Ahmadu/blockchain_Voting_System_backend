@@ -124,6 +124,7 @@ def clean_expired_sessions():
         del session_store[key]
 
 # Helper function for sending transactions
+# Helper function for sending transactions
 def send_contract_transaction(function_call, private_key):
     try:
         account = web3.eth.account.from_key(private_key)
@@ -138,7 +139,8 @@ def send_contract_transaction(function_call, private_key):
         
         # Sign and send transaction
         signed_tx = web3.eth.account.sign_transaction(tx, private_key)
-        tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        # Fix: Access the raw_transaction attribute instead of rawTransaction
+        tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
         
         # Wait for receipt
         receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
