@@ -31,7 +31,7 @@ infura_url = f"https://sepolia.infura.io/v3/{infura_project_id}"
 web3 = Web3(Web3.HTTPProvider(infura_url))
 
 # Load smart contract
-contract_address = Web3.to_checksum_address("0x722E04FA8774100cF5416a9fE02b2e5D2132710c")  # Replace with your deployed contract address
+contract_address = Web3.to_checksum_address("0x8912ED01D24cba70A535598Af18C38C48e44c585")  # Replace with your deployed contract address
 
 try:
     # Try different paths to find the contract file
