@@ -14,4 +14,4 @@ ENV PYTHONPATH=/app
 ENV PORT=5000
 RUN pip install gunicorn
 EXPOSE 5000
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "--timeout", "120", "--workers", "4", "--preload", "backend.app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--timeout", "120", "--workers", "4", "--preload", "backend.app:app"]
