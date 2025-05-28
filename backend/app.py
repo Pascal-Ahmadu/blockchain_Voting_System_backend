@@ -32,13 +32,15 @@ web3 = Web3(Web3.HTTPProvider(infura_url))
 # Load smart contract
 contract_address = Web3.to_checksum_address("0x8912ED01D24cba70A535598Af18C38C48e44c585")
 
+
 # Actual contract ABI from your deployed contract
+
 contract_abi = [
     {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
-    {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"candidateId","type":"uint256"},{"indexed":false,"internalType":"string","name":"name","type":"string"}],"name":"CandidateAdded","type":"event"},
-    {"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"voter","type":"address"},{"indexed":false,"internalType":"uint256","name":"candidateId","type":"uint256"}],"name":"VoteCasted","type":"event"},
-    {"anonymous":false,"inputs":[],"name":"VotingEnded","type":"event"},
-    {"anonymous":false,"inputs":[],"name":"VotingStarted","type":"event"},
+    {"anonymous":False,"inputs":[{"indexed":False,"internalType":"uint256","name":"candidateId","type":"uint256"},{"indexed":False,"internalType":"string","name":"name","type":"string"}],"name":"CandidateAdded","type":"event"},
+    {"anonymous":False,"inputs":[{"indexed":False,"internalType":"address","name":"voter","type":"address"},{"indexed":False,"internalType":"uint256","name":"candidateId","type":"uint256"}],"name":"VoteCasted","type":"event"},
+    {"anonymous":False,"inputs":[],"name":"VotingEnded","type":"event"},
+    {"anonymous":False,"inputs":[],"name":"VotingStarted","type":"event"},
     {"inputs":[{"internalType":"string","name":"_name","type":"string"}],"name":"addCandidate","outputs":[],"stateMutability":"nonpayable","type":"function"},
     {"inputs":[],"name":"admin","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
     {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"candidates","outputs":[{"internalType":"uint256","name":"id","type":"uint256"},{"internalType":"string","name":"name","type":"string"},{"internalType":"uint256","name":"voteCount","type":"uint256"}],"stateMutability":"view","type":"function"},
