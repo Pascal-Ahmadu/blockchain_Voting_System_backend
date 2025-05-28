@@ -32,7 +32,6 @@ web3 = Web3(Web3.HTTPProvider(infura_url))
 # Load smart contract
 contract_address = Web3.to_checksum_address("0x8912ED01D24cba70A535598Af18C38C48e44c585")
 
-# Actual contract ABI from your deployed contract
 contract_abi = [
     {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
     {"anonymous":False,"inputs":[{"indexed":False,"internalType":"uint256","name":"candidateId","type":"uint256"},{"indexed":False,"internalType":"string","name":"name","type":"string"}],"name":"CandidateAdded","type":"event"},
